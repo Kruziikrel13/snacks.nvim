@@ -935,7 +935,7 @@ function M.sections.keys()
   end
 end
 
----@param opts {cmd:string|string[], ttl?:number, height?:number, width?:number, random?:number}|snacks.dashboard.Item
+---@param opts {cmd:string|string[], ttl?:number, height?:number, width?:number, random?:number, blocking?:boolean}|snacks.dashboard.Item
 ---@return snacks.dashboard.Gen
 function M.sections.terminal(opts)
   return function(self)
@@ -943,6 +943,7 @@ function M.sections.terminal(opts)
     local ttl = opts.ttl or 3600
     local height = opts.height or 10
     local width = opts.width
+    local blocking = opts.blocking
     if not width then
       width = self.opts.width - (opts.indent or 0)
     end
@@ -980,9 +981,11 @@ function M.sections.terminal(opts)
     if not has_cache or is_expired then
       local output, recording = {}, assert(uv.new_timer())
       -- record output for max 5 seconds. otherwise assume its streaming
-      recording:start(5000, 0, function()
-        output = {}
-      end)
+      if not blocking then
+        recording:start(5000, 0, function()
+          output = {}
+        end)
+      end
       local first = true
       jid = vim.fn.jobstart(cmd, {
         height = height,
@@ -990,7 +993,9 @@ function M.sections.terminal(opts)
         pty = true,
         on_stdout = function(_, data)
           data = table.concat(data, "\n")
-          if recording:is_active() then
+          if not blocking and recording:is_active() then
+            table.insert(output, data)
+          elseif blocking then
             table.insert(output, data)
           end
           if first and has_cache then -- clear the screen if cache was expired
