@@ -268,6 +268,7 @@ function M:init_layout(layout)
       backdrop = backdrop,
     },
   }))
+  self:attach()
 
   -- apply box highlight groups
   local boxwhl = Snacks.picker.highlight.winhl("SnacksPickerBox")
